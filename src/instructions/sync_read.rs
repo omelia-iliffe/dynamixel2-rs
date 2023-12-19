@@ -112,17 +112,20 @@ where
 	///
 	/// If this function fails to get the data from any of the motors, the entire function retrns an error.
 	/// If you need access to the data from other motors, or if you want acces to the error for each motor, see [`Self::sync_read_cb`].
-	pub fn sync_read<'a>(&'a mut self, motor_ids: &'a [u8], address: u16, count: u16) -> Result<Vec<Response<Vec<u8>>>, TransferError> {
+	pub fn sync_read<'a>(
+		&'a mut self,
+		motor_ids: &'a [u8],
+		address: u16,
+		count: u16,
+	) -> Result<Vec<Result<Response<Vec<u8>>, ReadError>>, TransferError> {
 		let mut result = Vec::with_capacity(motor_ids.len());
-		let mut read_error = None;
 		self.sync_read_cb(motor_ids, address, count, |data| match data {
-			Err(e) if read_error.is_none() => read_error = Some(e),
-			Err(_) => (),
-			Ok(response) => result.push(Response {
+			Err(e) => result.push(Err(e)),
+			Ok(response) => result.push(Ok(Response {
 				motor_id: response.motor_id,
 				alert: response.alert,
 				data: response.data.to_owned(),
-			}),
+			})),
 		})?;
 		Ok(result)
 	}
@@ -131,14 +134,13 @@ where
 	///
 	/// If this function fails to get the data from any of the motors, the entire function retrns an error.
 	/// If you need access to the data from other motors, or if you want acces to the error for each motor, see [`Self::sync_read_u8_cb`].
-	pub fn sync_read_u8<'a>(&'a mut self, motor_ids: &'a [u8], address: u16) -> Result<Vec<Response<u8>>, TransferError> {
+	pub fn sync_read_u8<'a>(
+		&'a mut self,
+		motor_ids: &'a [u8],
+		address: u16,
+	) -> Result<Vec<Result<Response<u8>, ReadError>>, TransferError> {
 		let mut result = Vec::with_capacity(motor_ids.len());
-		let mut read_error = None;
-		self.sync_read_u8_cb(motor_ids, address, |data| match data {
-			Err(e) if read_error.is_none() => read_error = Some(e),
-			Err(_) => (),
-			Ok(data) => result.push(data),
-		})?;
+		self.sync_read_u8_cb(motor_ids, address, |data| result.push(data))?;
 		Ok(result)
 	}
 
@@ -146,14 +148,13 @@ where
 	///
 	/// If this function fails to get the data from any of the motors, the entire function retrns an error.
 	/// If you need access to the data from other motors, or if you want acces to the error for each motor, see [`Self::sync_read_u16_cb`].
-	pub fn sync_read_u16<'a>(&'a mut self, motor_ids: &'a [u8], address: u16) -> Result<Vec<Response<u16>>, TransferError> {
+	pub fn sync_read_u16<'a>(
+		&'a mut self,
+		motor_ids: &'a [u8],
+		address: u16,
+	) -> Result<Vec<Result<Response<u16>, ReadError>>, TransferError> {
 		let mut result = Vec::with_capacity(motor_ids.len());
-		let mut read_error = None;
-		self.sync_read_u16_cb(motor_ids, address, |data| match data {
-			Err(e) if read_error.is_none() => read_error = Some(e),
-			Err(_) => (),
-			Ok(data) => result.push(data),
-		})?;
+		self.sync_read_u16_cb(motor_ids, address, |data| result.push(data))?;
 		Ok(result)
 	}
 
@@ -161,14 +162,13 @@ where
 	///
 	/// If this function fails to get the data from any of the motors, the entire function retrns an error.
 	/// If you need access to the data from other motors, or if you want acces to the error for each motor, see [`Self::sync_read_u32_cb`].
-	pub fn sync_read_u32<'a>(&'a mut self, motor_ids: &'a [u8], address: u16) -> Result<Vec<Response<u32>>, TransferError> {
+	pub fn sync_read_u32<'a>(
+		&'a mut self,
+		motor_ids: &'a [u8],
+		address: u16,
+	) -> Result<Vec<Result<Response<u32>, ReadError>>, TransferError> {
 		let mut result = Vec::with_capacity(motor_ids.len());
-		let mut read_error = None;
-		self.sync_read_u32_cb(motor_ids, address, |data| match data {
-			Err(e) if read_error.is_none() => read_error = Some(e),
-			Err(_) => (),
-			Ok(data) => result.push(data),
-		})?;
+		self.sync_read_u32_cb(motor_ids, address, |data| result.push(data))?;
 		Ok(result)
 	}
 }
