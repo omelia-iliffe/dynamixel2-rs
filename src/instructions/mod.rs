@@ -1,4 +1,8 @@
+//! Types and functions for specific instructions.
+
+/// Raw instructions IDs.
 #[rustfmt::skip]
+#[allow(missing_docs)]
 pub mod instruction_id {
 	pub const PING          : u8 = 0x01;
 	pub const READ          : u8 = 0x02;
@@ -15,7 +19,9 @@ pub mod instruction_id {
 	pub const STATUS        : u8 = 0x55;
 }
 
+/// Special packet IDs.
 pub mod packet_id {
+	/// The broadcast address.
 	pub const BROADCAST: u8 = 0xFE;
 }
 
@@ -38,6 +44,7 @@ pub use ping::PingResponse;
 /// Data from or for a specific motor.
 ///
 /// Used by synchronous write commands.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SyncWriteData<T> {
 	/// The ID of the motor.
 	pub motor_id: u8,
@@ -54,11 +61,11 @@ impl<T> AsRef<SyncWriteData<T>> for SyncWriteData<T> {
 
 /// Bulk data for a specific motor.
 ///
-/// This struct is very comparable to [`SyncData`],
-/// but it supports reads and writes
-/// of different sizes and to different addresses for each motor.
+/// This struct is similar to [`SyncWriteData`],
+/// but it supports reads and writes of different sizes and to different addresses for each motor.
 ///
 /// Used by bulk write commands.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BulkWriteData<T> {
 	/// The ID of the motor.
 	pub motor_id: u8,
@@ -76,6 +83,8 @@ impl<T> AsRef<BulkWriteData<T>> for BulkWriteData<T> {
 	}
 }
 
+/// Parameters for a bulk read instruction.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BulkReadData {
 	/// The ID of the motor.
 	pub motor_id: u8,
@@ -83,7 +92,7 @@ pub struct BulkReadData {
 	/// The address for the read or write.
 	pub address: u16,
 
-	// The length of the data to be read.
+	/// The length of the data to be read.
 	pub count: u16,
 }
 

@@ -2,7 +2,8 @@ use super::{instruction_id, packet_id};
 use crate::bus::StatusPacket;
 use crate::{Bus, ReadError, TransferError, WriteError};
 
-#[derive(Debug)]
+/// A response from a motor to a ping instruction.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PingResponse {
 	/// The ID of the motor.
 	pub motor_id: u8,
@@ -15,6 +16,10 @@ pub struct PingResponse {
 	/// The firmware version of the motor.
 	pub firmware: u8,
 
+	/// The alert bit from the response message.
+	///
+	/// If this bit is set, you can normally check the "Hardware Error" register for more details.
+	/// Consult the manual of your motor for more information.
 	pub alert: bool,
 }
 

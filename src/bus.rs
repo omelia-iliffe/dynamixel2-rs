@@ -29,6 +29,34 @@ pub struct Bus<ReadBuffer, WriteBuffer> {
 	write_buffer: WriteBuffer,
 }
 
+impl<ReadBuffer, WriteBuffer> std::fmt::Debug for Bus<ReadBuffer, WriteBuffer> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		#[derive(Debug)]
+		enum Raw {
+			#[cfg(unix)]
+			Fd(std::os::unix::io::RawFd),
+			#[cfg(windows)]
+			Handle(std::os::windows::io::RawHandle),
+		}
+
+		#[cfg(unix)]
+		let raw = {
+			use std::os::unix::io::AsRawFd;
+			Raw::Fd(self.serial_port.as_raw_fd())
+		};
+		#[cfg(windows)]
+		let raw = {
+			use std::os::windows::io::AsRawHandle;
+			Raw::Handle(self.serial_port.as_raw_handle())
+		};
+
+		f.debug_struct("Bus")
+			.field("serial_port", &raw)
+			.field("read_timeout", &self.read_timeout)
+			.finish_non_exhaustive()
+	}
+}
+
 impl Bus<Vec<u8>, Vec<u8>> {
 	/// Open a serial port with the given baud rate.
 	///
@@ -247,6 +275,7 @@ where
 /// A status response that is currently in the read buffer of a bus.
 ///
 /// When dropped, the response data is removed from the read buffer.
+#[derive(Debug)]
 pub struct StatusPacket<'a, ReadBuffer, WriteBuffer>
 where
 	ReadBuffer: AsRef<[u8]> + AsMut<[u8]>,
@@ -340,7 +369,10 @@ fn find_header(buffer: &[u8]) -> usize {
 }
 
 /// A response from a motor.
-#[derive(Debug)]
+///
+/// Note that the `Eq` and `PartialEq` compare all fields of the struct,
+/// including the `motor_id` and `alert`.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Response<T> {
 	/// The motor that sent the response.
 	pub motor_id: u8,
