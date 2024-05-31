@@ -4,6 +4,10 @@ use crate::{Bus, Response};
 /// The parameters for the CLEAR command to clear the revolution counter.
 const CLEAR_REVOLUTION_COUNT: [u8; 5] = [0x01, 0x44, 0x58, 0x4C, 0x22];
 
+/// The parameters for the CLEAR command to clear the error state.
+/// This is only supported on some motors.
+const CLEAR_ERROR: [u8; 5] = [0x01, 0x45, 0x52, 0x43, 0x4C];
+
 impl<ReadBuffer, WriteBuffer> Bus<ReadBuffer, WriteBuffer>
 where
 	ReadBuffer: AsRef<[u8]> + AsMut<[u8]>,
@@ -23,6 +27,16 @@ where
 		self.write_instruction(motor_id, instruction_id::CLEAR, CLEAR_REVOLUTION_COUNT.len(), encode_parameters)?;
 		Ok(super::read_response_if_not_broadcast(self, motor_id)?)
 	}
+
+    /// Clear the error of a motor.
+    ///
+    /// This will reset the "error code" register to 0 if the error can be cleared.
+    /// If the error cannot be cleared, the status packet error will be 0x01.
+    /// This is currently only implemented on the Dynamixel Y series.
+    pub fn clear_error(&mut self, motor_id: u8) -> Result<Response<()>, crate::TransferError> {
+        let response = self.transfer_single(motor_id, instruction_id::CLEAR, CLEAR_ERROR.len(), encode_parameters)?;
+        Ok(response.try_into()?)
+    }
 
 	/// Clear the revolution counter of all connected motors.
 	///
