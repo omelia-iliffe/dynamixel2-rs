@@ -82,10 +82,14 @@ fn main() -> ! {
 	let mut bus = Bus::with_buffers(transport, [0; 200], [0; 200]).unwrap();
 	loop {
 		info!("led on");
-		bus.write_u8(ID, LED_ADDRESS, 1).unwrap();
+		if let Err(e) = bus.write_u8(ID, LED_ADDRESS, 1) {
+			error!("Error: {:?}", defmt::Debug2Format(&e));
+		}
 		timer.delay_ms(500);
 		info!("led off");
-		bus.write_u8(ID, LED_ADDRESS, 0).unwrap();
+		if let Err(e) = bus.write_u8(ID, LED_ADDRESS, 0) {
+			error!("Error: {:?}", defmt::Debug2Format(&e));
+		}
 		timer.delay_ms(500);
 	}
 }

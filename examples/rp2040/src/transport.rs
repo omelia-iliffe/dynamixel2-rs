@@ -60,17 +60,25 @@ impl<P, D, A, DIR> Transport for DynamixelSerial<P, D, A, DIR>
     }
 
     fn read(&mut self, buffer: &mut [u8]) -> Result<usize, ReadError<Self::Error>> {
-        let r = block!(self.serial.read_raw(buffer));
-        let r = r.map_err(|e| ReadError::Io(Error::UartReadError(e.err_type)))?;
-        Ok(r)
+        loop {
+            if self.timer.finished() {
+                return Err(ReadError::Timeout);
+            }
+            match (self.serial.read_raw(buffer)) {
+                Err(nb::Error::Other(e)) => {
+                    return Err(ReadError::Io(Error::UartReadError(e.err_type)))
+                }
+                Err(nb::Error::WouldBlock) => {}
+                Ok(x) => return Ok(x),
+            }
+        }
     }
 
     fn write_all(&mut self, buffer: &[u8]) -> Result<(), Self::Error> {
         let _ = self.dir_pin.set_high();
         self.serial.write_full_blocking(buffer);
-        block!(self.serial.flush());
+        let _ = block!(self.serial.flush());
         let _ = self.dir_pin.set_low();
-        // self.serial.flush().unwrap();
         Ok(())
     }
 }
