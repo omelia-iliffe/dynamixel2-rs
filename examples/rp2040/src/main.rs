@@ -6,7 +6,6 @@
 
 mod transport;
 
-use core::iter::once;
 use bsp::entry;
 use defmt::*;
 use defmt_rtt as _;
@@ -15,7 +14,7 @@ use panic_probe as _;
 use adafruit_kb2040 as bsp;
 use adafruit_kb2040::hal;
 use adafruit_kb2040::hal::fugit::RateExtU32;
-use adafruit_kb2040::hal::uart::{DataBits, Pins, StopBits, UartConfig};
+use adafruit_kb2040::hal::uart::{DataBits, StopBits, UartConfig};
 use bsp::hal::{
 	clocks::{init_clocks_and_plls, Clock},
 	pac,
@@ -52,7 +51,6 @@ fn main() -> ! {
 
 
 	let mut timer = hal::Timer::new(pac.TIMER, &mut pac.RESETS, &clocks);
-	let alarm = timer.alarm_0().unwrap();
 
 	let pins = bsp::Pins::new(
 		pac.IO_BANK0,
@@ -67,18 +65,18 @@ fn main() -> ! {
 		// UART RX
 		pins.d5.into_function(),
 	);
-	/// CREATE THE UART PERIPHERAL
+	// CREATE THE UART PERIPHERAL
 	let uart = hal::uart::UartPeripheral::new(pac.UART1, uart_pins, &mut pac.RESETS)
 		.enable(
 			UartConfig::new(BAUD_RATE.Hz(), DataBits::Eight, None, StopBits::One),
 			clocks.peripheral_clock.freq(),
 		)
 		.unwrap();
-	/// SETUP THE ENABLE/DIR PIN
+	// SETUP THE ENABLE/DIR PIN
 	let dir_pin = pins.d6.into_function();
-	/// CREATE THE TRANSPORT
-	let transport = DynamixelSerial::new(uart, BAUD_RATE, dir_pin, alarm);
-	/// CREATE THE BUS
+	// CREATE THE TRANSPORT
+	let transport = DynamixelSerial::new(uart, BAUD_RATE, dir_pin, timer);
+	// CREATE THE BUS
 	let mut bus = Bus::with_buffers(transport, [0; 200], [0; 200]).unwrap();
 	loop {
 		info!("led on");
