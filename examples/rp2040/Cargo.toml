@@ -16,3 +16,8 @@ adafruit-kb2040 = "0.8.0"
 
 dynamixel2 = { path = "../..", default-features = false }
 nb = "1.1.0"
+
+[features]
+default = ["device"]
+client = []
+device = []
