@@ -158,8 +158,9 @@ where
 				let body_len = body_len - P::HEADER_OVERLAP; // Length includes some bytes which are already included in P::PACKET_HEADER_SIZE.
 
 				// Check if the read buffer is large enough for the entire message.
-				// We don't have to remove the read bytes, because `write_instruction()` already clears the read buffer.
-				crate::error::BufferTooSmallError::check(P::HEADER_SIZE + body_len, self.read_buffer.as_mut().len())?;
+				crate::error::BufferTooSmallError::check(P::HEADER_SIZE + body_len, self.read_buffer.as_mut().len()).inspect_err(|_| {
+					self.consume_read_bytes(P::HEADER_SIZE);
+				})?;
 
 				if self.read_len >= P::HEADER_SIZE + body_len {
 					trace!("P::HEADER_SIZE: {}, body_len: {}", P::HEADER_SIZE, body_len);
@@ -168,11 +169,10 @@ where
 			}
 
 			// Try to read more data into the buffer.
-			let new_data = self.serial_port.read(&mut self.read_buffer.as_mut()[self.read_len..], &deadline)
+			let new_data = self
+				.serial_port
+				.read(&mut self.read_buffer.as_mut()[self.read_len..], &deadline)
 				.map_err(ReadError::Io)?;
-			if new_data == 0 {
-				continue;
-			}
 
 			self.read_len += new_data;
 		};
