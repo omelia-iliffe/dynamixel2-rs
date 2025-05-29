@@ -58,7 +58,7 @@ pub type DefaultBuffer = &'static mut [u8];
 #[macro_export]
 macro_rules! static_buffer {
 	($N:literal) => {{
-		use ::core::sync::atomic::{AtomicBool, Ordering};
+		use core::sync::atomic::{AtomicBool, Ordering};
 		static USED: AtomicBool = AtomicBool::new(false);
 		static mut BUFFER: [u8; $N] = [0; $N];
 		if USED.swap(true, Ordering::Relaxed) {
@@ -233,6 +233,7 @@ where
 		// Check that the read buffer is large enough to hold atleast a instruction packet with 0 parameters.
 		crate::error::BufferTooSmallError::check(HEADER_SIZE + 3, self.read_buffer.as_mut().len())?;
 
+		self.serial_port.init_read().map_err(ReadError::Io)?;
 		let stuffed_message_len = loop {
 			self.remove_garbage();
 
@@ -260,6 +261,7 @@ where
 
 			self.read_len += new_data;
 		};
+		self.serial_port.finish_read().map_err(ReadError::Io)?;
 
 		let buffer = self.read_buffer.as_mut();
 		let parameters_end = stuffed_message_len - 2;

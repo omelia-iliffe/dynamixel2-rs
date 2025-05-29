@@ -24,6 +24,16 @@ pub trait SerialPort {
 	/// Discard the input buffer of the serial port. Maybe a no-op on some platforms.
 	fn discard_input_buffer(&mut self) -> Result<(), Self::Error>;
 
+	/// Called before the first call to `SerialPort::read`. Can be used to setup for the multiple calls to read. Maybe no-op on some platforms.
+	fn init_read(&mut self) -> Result<(), Self::Error> {
+		Ok(())
+	}
+
+	/// Called after the last call to `SerialPort::read`. Maybe no-op on some platforms.
+	fn finish_read(&mut self) -> Result<(), Self::Error> {
+		Ok(())
+	}
+
 	/// Returns available bytes to read, blocking until at least one byte is available or the deadline expires.
 	fn read(&mut self, buffer: &mut [u8], deadline: &Self::Instant) -> Result<usize, Self::Error>;
 
