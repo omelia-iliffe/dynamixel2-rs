@@ -83,9 +83,9 @@ pub enum Instructions<T> {
 	FactoryReset(FactoryReset),
 	Reboot,
 	Clear(Clear),
-	SyncRead { address: u16, length: u16, ids: T },
+	SyncRead { fast: bool, address: u16, length: u16, ids: T },
 	SyncWrite { address: u16, length: u16, parameters: T },
-	BulkRead { parameters: T },
+	BulkRead { fast: bool, parameters: T },
 	BulkWrite { parameters: T },
 	StatusPacket { error: u8, parameters: T },
 	Unknown { instruction: u8, parameters: T },
@@ -141,9 +141,11 @@ impl<'a> TryFrom<InstructionPacket<'a>> for Instruction<&'a [u8]> {
 				}
 			},
 			// todo: instruction_id::ControlTableBackup
-			instruction_id::SYNC_READ => {
+			instruction_id::SYNC_READ | instruction_id::FAST_SYNC_READ => {
+				let fast = packet.instruction_id() == instruction_id::FAST_SYNC_READ;
 				InvalidParameterCount::check_min(parameters.len(), 4)?;
 				Instructions::SyncRead {
+					fast,
 					address: read_u16_le(&parameters[..2]),
 					length: read_u16_le(&parameters[2..4]),
 					ids: &parameters[4..],
@@ -157,7 +159,10 @@ impl<'a> TryFrom<InstructionPacket<'a>> for Instruction<&'a [u8]> {
 					parameters: &parameters[4..],
 				}
 			},
-			instruction_id::BULK_READ => Instructions::BulkRead { parameters },
+			instruction_id::BULK_READ | instruction_id::FAST_BULK_READ => {
+				let fast = packet.instruction_id() == instruction_id::FAST_BULK_READ;
+				Instructions::BulkRead { fast, parameters }
+			},
 			instruction_id::BULK_WRITE => Instructions::BulkWrite { parameters },
 
 			instruction_id::STATUS => {
@@ -199,7 +204,13 @@ impl<'a> TryFrom<InstructionPacket<'a>> for Instruction<alloc::vec::Vec<u8>> {
 			Instructions::FactoryReset(f) => Instructions::FactoryReset(f),
 			Instructions::Reboot => Instructions::Reboot,
 			Instructions::Clear(c) => Instructions::Clear(c),
-			Instructions::SyncRead { address, length, ids } => Instructions::SyncRead {
+			Instructions::SyncRead {
+				fast,
+				address,
+				length,
+				ids,
+			} => Instructions::SyncRead {
+				fast,
 				address,
 				length,
 				ids: ids.to_owned(),
@@ -213,10 +224,11 @@ impl<'a> TryFrom<InstructionPacket<'a>> for Instruction<alloc::vec::Vec<u8>> {
 				length,
 				parameters: parameters.to_owned(),
 			},
-			Instructions::BulkRead { parameters } => Instructions::BulkRead {
+			Instructions::BulkRead { fast, parameters } => Instructions::BulkRead {
+				fast,
 				parameters: parameters.to_owned(),
 			},
-			Instructions::BulkWrite { parameters } => Instructions::BulkRead {
+			Instructions::BulkWrite { parameters } => Instructions::BulkWrite {
 				parameters: parameters.to_owned(),
 			},
 			Instructions::StatusPacket { error, parameters } => Instructions::StatusPacket {

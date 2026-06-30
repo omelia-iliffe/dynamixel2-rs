@@ -13,7 +13,7 @@
 //! The [`client::Client`] struct exposes functions for all supported instructions such as [`client::Client::ping`], [`client::Client::read`], [`client::Client::write`] and much more.
 //! Additionally, you can also transmit raw commands using [`client::Client::write_instruction`] and [`client::Client::read_status_response`], or [`client::Client::transfer_single`].
 //!
-//! The library currently implements all instructions except for the Control Table Backup, Fast Sync Read and Fast Sync Write instructions.
+//! The library currently implements all instructions except for the Control Table Backup and Fast Sync Write instructions.
 //!
 //! # Optional features
 //!
