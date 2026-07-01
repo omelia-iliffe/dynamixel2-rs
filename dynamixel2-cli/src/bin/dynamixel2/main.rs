@@ -103,6 +103,44 @@ fn do_main(options: Options) -> Result<(), ()> {
 			}
 			log::info!("{:?}: {:?}", start.elapsed(), response.data,);
 		},
+		Command::SyncRead {
+			address,
+			count,
+			motor_ids,
+			fast,
+		} => {
+			let mut client = open_client(&options)?;
+			let kind = if *fast { "Fast sync" } else { "Sync" };
+			log::debug!(
+				"{} reading {} bytes from motors {:?} at address {}",
+				kind,
+				count,
+				motor_ids,
+				address
+			);
+			let start = Instant::now();
+			if *fast {
+				let responses = client
+					.fast_sync_read_bytes::<Vec<u8>>(motor_ids, *address, *count)
+					.map_err(|e| log::error!("Command failed: {}", e))?;
+				for response in responses {
+					match response {
+						Ok(response) => log_sync_read_response(&response, start.elapsed()),
+						Err(e) => log::error!("Error reading from motor: {}", e),
+					}
+				}
+			} else {
+				let responses = client
+					.sync_read_bytes::<Vec<u8>>(motor_ids, *address, *count)
+					.map_err(|e| log::error!("Command failed: {}", e))?;
+				for response in responses {
+					match response {
+						Ok(response) => log_sync_read_response(&response, start.elapsed()),
+						Err(e) => log::error!("Error reading from motor: {}", e),
+					}
+				}
+			}
+		},
 		Command::Write8 { motor_id, address, value } => {
 			let mut client = open_client(&options)?;
 			log::debug!(
@@ -179,6 +217,11 @@ fn do_main(options: Options) -> Result<(), ()> {
 }
 
 fn open_client(options: &Options) -> Result<dynamixel2::client::Client, ()> {
+	#[cfg(target_os = "linux")]
+	if options.rs485 {
+		return open_client_rs485(options);
+	}
+
 	let client = dynamixel2::client::Client::open(&options.serial_port, options.baud_rate)
 		.map_err(|e| log::error!("Failed to open serial port: {}: {}", options.serial_port.display(), e))?;
 	log::debug!(
@@ -187,6 +230,35 @@ fn open_client(options: &Options) -> Result<dynamixel2::client::Client, ()> {
 		options.baud_rate
 	);
 	Ok(client)
+}
+
+/// Open the serial port with half-duplex RS-485 mode enabled, then wrap it in a client.
+///
+/// RS-485 transceiver control is only available on Linux, so this is compiled in on Linux only.
+#[cfg(target_os = "linux")]
+fn open_client_rs485(options: &Options) -> Result<dynamixel2::client::Client, ()> {
+	use dynamixel2::serial2::rs4xx::{Rs485Config, TransceiverMode};
+	use dynamixel2::serial2::SerialPort;
+
+	let port = SerialPort::open(&options.serial_port, options.baud_rate)
+		.map_err(|e| log::error!("Failed to open serial port: {}: {}", options.serial_port.display(), e))?;
+	port.set_rs4xx_mode(TransceiverMode::Rs485(Rs485Config::new()))
+		.map_err(|e| log::error!("Failed to enable RS-485 mode on {}: {}", options.serial_port.display(), e))?;
+	let client = dynamixel2::client::Client::new(port)
+		.map_err(|e| log::error!("Failed to create client on {}: {}", options.serial_port.display(), e))?;
+	log::debug!(
+		"Using serial port {} with baud rate {} in RS-485 mode",
+		options.serial_port.display(),
+		options.baud_rate
+	);
+	Ok(client)
+}
+
+fn log_sync_read_response(response: &dynamixel2::Response<Vec<u8>>, elapsed: Duration) {
+	if response.alert {
+		log::warn!("Alert bit set in response from motor {}!", response.motor_id)
+	}
+	log::info!("{:?}: motor {}: {:?}", elapsed, response.motor_id, response.data);
 }
 
 fn log_ping_response(response: &dynamixel2::Response<dynamixel2::client::Ping>, elapsed: Duration) {

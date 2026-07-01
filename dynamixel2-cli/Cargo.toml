@@ -19,3 +19,8 @@ dynamixel2 = { version = "^0.9.1", path = "..", features = ["log"] }
 env_logger = "0.11.5"
 log = "0.4.14"
 serial2 = "0.2.10"
+
+# RS-485 transceiver control is only available on Linux (via TIOCSRS485), so the `rs4xx` feature and the
+# `--rs485` flag it enables are gated to Linux targets.
+[target.'cfg(target_os = "linux")'.dependencies]
+dynamixel2 = { version = "^0.9.1", path = "..", features = ["rs4xx"] }

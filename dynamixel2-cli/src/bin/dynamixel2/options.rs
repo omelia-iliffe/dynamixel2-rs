@@ -25,6 +25,12 @@ pub struct Options {
 	#[clap(default_value = "57600")]
 	pub baud_rate: u32,
 
+	/// Configure the port for half-duplex RS-485 (Linux only).
+	#[cfg(target_os = "linux")]
+	#[clap(long)]
+	#[clap(global = true)]
+	pub rs485: bool,
+
 	#[clap(subcommand)]
 	pub command: Command,
 }
@@ -95,6 +101,28 @@ pub enum Command {
 		/// The number of bytes to read.
 		#[clap(value_name = "COUNT")]
 		count: u16,
+	},
+
+	/// Read the same value from multiple motors with a sync read.
+	///
+	/// By default each motor replies with its own status packet. With `--fast`, all motors reply in a
+	/// single status packet, which is faster but loses the entire response if any motor fails to reply.
+	SyncRead {
+		/// The address to read from.
+		#[clap(value_name = "ADDRESS")]
+		address: u16,
+
+		/// The number of bytes to read from each motor.
+		#[clap(value_name = "COUNT")]
+		count: u16,
+
+		/// The motors to read from (no broadcast ID allowed).
+		#[clap(value_name = "MOTOR_ID", required = true, num_args = 1..)]
+		motor_ids: Vec<u8>,
+
+		/// Use the fast sync read instruction (single status packet for all motors).
+		#[clap(long)]
+		fast: bool,
 	},
 
 	/// Write an 8-bit value to a motor.
