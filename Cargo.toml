@@ -55,6 +55,7 @@ env_logger = "0.11.5"
 test-log = "0.2.16"
 log = "0.4.8"
 criterion = "0.7.0"
+clap = { version = "4.4.10", features = ["derive"] }
 
 [workspace]
 members = ["dynamixel2-cli"]

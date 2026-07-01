@@ -325,6 +325,7 @@ version = "0.9.1"
 dependencies = [
  "assert2",
  "bisync",
+ "clap",
  "criterion",
  "env_logger",
  "log",

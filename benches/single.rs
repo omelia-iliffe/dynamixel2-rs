@@ -1,5 +1,4 @@
-use assert2::let_assert;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::Criterion;
 use dynamixel2::client::Client;
 
 mod common;
@@ -7,14 +6,23 @@ mod common;
 const PRESENT_POSITION: u16 = 132;
 const GOAL_POSITION: u16 = 116;
 
-pub fn read(c: &mut Criterion) {
-	let (id, mut client) = common::setup();
-	c.bench_function("read", |b| b.iter(|| _ = client.read::<u32>(id[0], PRESENT_POSITION).unwrap()));
-}
-pub fn write(c: &mut Criterion) {
-	let (id, mut client) = common::setup();
-	c.bench_function("write", |b| b.iter(|| _ = client.write::<u32>(id[0], GOAL_POSITION, &116).unwrap()));
+fn read(c: &mut Criterion, client: &mut Client, ids: &[u8]) {
+	c.bench_function("read", |b| b.iter(|| _ = client.read::<u32>(ids[0], PRESENT_POSITION).unwrap()));
 }
 
-criterion_group!(benches, read, write);
-criterion_main!(benches);
+fn write(c: &mut Criterion, client: &mut Client, ids: &[u8]) {
+	c.bench_function("write", |b| {
+		b.iter(|| _ = client.write::<u32>(ids[0], GOAL_POSITION, &116).unwrap())
+	});
+}
+
+fn main() {
+	let args = common::parse();
+	let mut client = common::open_client(&args);
+	let mut c = common::criterion(&args);
+
+	read(&mut c, &mut client, &args.ids);
+	write(&mut c, &mut client, &args.ids);
+
+	c.final_summary();
+}
