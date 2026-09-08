@@ -236,7 +236,7 @@ where
 	{
 		self.write_instruction(packet_id, instruction_id, parameter_count, encode_parameters)
 			.await?;
-		let response = self.read_status_response(expected_response_parameters, true).await?;
+		let response = self.read_status_response(expected_response_parameters).await?;
 		crate::error::InvalidPacketId::check(response.packet_id(), packet_id).map_err(crate::ReadError::from)?;
 		Ok(response)
 	}
@@ -258,15 +258,9 @@ where
 	}
 
 	/// Read a raw status response from the bus with the given deadline.
-	///
-	/// If `check_error` is `true`, the packet error field is checked and a [`crate::MotorError`] is returned if it is set.
-	/// Fast sync/bulk read responses pack a per-motor error byte for every motor into a single packet,
-	/// and the first motor's error byte coincides with the packet error field, so those reads pass `false`
-	/// and check the error of each motor individually while iterating the response instead.
 	pub async fn read_status_response_timeout<'a>(
 		&'a mut self,
 		timeout: Duration,
-		check_error: bool,
 	) -> Result<StatusPacket<'a>, ReadError<Port::Error>> {
 		let deadline = self.serial_port().make_deadline(timeout);
 		let packet = self.bus.read_packet_deadline(deadline).await?;
@@ -281,32 +275,28 @@ where
 			},
 		};
 
-		if check_error {
-			crate::MotorError::check(status.error())?;
-		}
+		crate::MotorError::check(status.error())?;
 		Ok(status)
 	}
 
 	/// Read a raw status response with an automatically calculated timeout.
 	///
 	/// The read timeout is determined by the expected number of response parameters and the baud rate of the bus.
-	/// See [`Self::read_status_response_timeout`] for the meaning of `check_error`.
 	pub async fn read_status_response<'a>(
 		&'a mut self,
 		expected_parameters: u16,
-		check_error: bool,
 	) -> Result<StatusPacket<'a>, ReadError<Port::Error>> {
 		let message_size = crate::bus::StatusPacket::message_len(expected_parameters as usize) as u32;
 		let timeout = crate::bus::message_transfer_time(message_size, self.bus.baud_rate) + self.response_timeout_padding;
-		self.read_status_response_timeout(timeout, check_error).await
+		self.read_status_response_timeout(timeout).await
 	}
 
 	/// Read the combined status response of a fast sync/bulk read, tolerating a missing motor reply.
 	///
 	/// Unlike [`Self::read_status_response`], a missing motor block does not discard the whole response: the
 	/// complete blocks that arrived are recovered and returned, and the parser identifies the first motor that
-	/// did not reply while iterating. The per-motor error fields are *not* checked here (that happens per motor
-	/// while iterating), matching `check_error == false`.
+	/// did not reply while iterating. The per-motor error fields are *not* checked here; that happens per motor
+	/// while iterating.
 	///
 	/// `block_data_len(index)` returns the number of data bytes in the block of the `index`-th addressed motor,
 	/// or [`None`] once past the last motor. `expected_parameters` is used only to size the read timeout.
@@ -340,7 +330,7 @@ where
 				data: (),
 			})
 		} else {
-			Ok(self.read_status_response(0, true).await?.try_into()?)
+			Ok(self.read_status_response(0).await?.try_into()?)
 		}
 	}
 }
