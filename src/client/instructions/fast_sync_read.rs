@@ -28,6 +28,8 @@ where
 	/// then yields a [`MissingResponse`] error naming the first motor that did not respond.
 	///
 	/// # Panics
+	/// This function panics if `motor_ids` is empty.
+	///
 	/// A status packet can hold at most a `u16` worth of parameters.
 	/// This function panics if the combined response would exceed that
 	/// (`(T::ENCODED_SIZE + 4) * motor_ids.len()`), which requires a pathological number of motors and registers.
@@ -36,6 +38,7 @@ where
 		motor_ids: &'a [u8],
 		address: u16,
 	) -> Result<FastSyncRead<'a, T, SerialPort::Error>, TransferError<SerialPort::Error>> {
+		assert!(!motor_ids.is_empty(), "fast_sync_read: motor_ids may not be empty");
 		let count = T::ENCODED_SIZE;
 		self.write_instruction(
 			packet_id::BROADCAST,
@@ -80,6 +83,8 @@ where
 	/// in the same order as `motor_ids`.
 	///
 	/// # Panics
+	/// This function panics if `motor_ids` is empty.
+	///
 	/// A status packet can hold at most a `u16` worth of parameters.
 	/// This function panics if the combined response would exceed that
 	/// (`(count + 4) * motor_ids.len()`), which requires a pathological number of motors and registers.
@@ -103,6 +108,8 @@ where
 	/// [`FastSyncReadBytes::read_next_borrow`], which yields a [`Response`] of `&T` (for example `&[u8]`).
 	///
 	/// # Panics
+	/// This function panics if `motor_ids` is empty.
+	///
 	/// A status packet can hold at most a `u16` worth of parameters.
 	/// This function panics if the combined response would exceed that
 	/// (`(count + 4) * motor_ids.len()`), which requires a pathological number of motors and registers.
@@ -128,6 +135,7 @@ where
 		address: u16,
 		count: u16,
 	) -> Result<FastSyncReadBytes<'a, T, SerialPort::Error>, TransferError<SerialPort::Error>> {
+		assert!(!motor_ids.is_empty(), "fast_sync_read: motor_ids may not be empty");
 		self.write_instruction(
 			packet_id::BROADCAST,
 			instruction_id::FAST_SYNC_READ,

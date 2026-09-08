@@ -28,6 +28,8 @@ where
 	/// then yields a [`MissingResponse`] error naming the first motor that did not respond.
 	///
 	/// # Panics
+	/// This function panics if `reads` is empty.
+	///
 	/// The protocol forbids specifying the same motor ID multiple times.
 	/// This function panics if the same motor ID is used for more than one read.
 	///
@@ -52,6 +54,8 @@ where
 	/// [`FastBulkRead::read_next_borrow`], which yields a [`Response`] of `&T` (for example `&[u8]`).
 	///
 	/// # Panics
+	/// This function panics if `reads` is empty.
+	///
 	/// The protocol forbids specifying the same motor ID multiple times.
 	/// This function panics if the same motor ID is used for more than one read.
 	///
@@ -76,6 +80,7 @@ where
 		&'a mut self,
 		reads: &'a [BulkReadData],
 	) -> Result<FastBulkRead<'a, T, SerialPort::Error>, TransferError<SerialPort::Error>> {
+		assert!(!reads.is_empty(), "fast_bulk_read: reads may not be empty");
 		for i in 0..reads.len() {
 			for j in i + 1..reads.len() {
 				if reads[i].motor_id == reads[j].motor_id {
