@@ -157,7 +157,7 @@ where
 	/// Read a raw packet from the bus with the given deadline.
 	pub async fn read_packet_deadline(&mut self, deadline: Port::Instant) -> Result<Packet<'_>, ReadError<Port::Error>> {
 		// A regular read expects the whole packet: a read timeout is a genuine failure, never salvaged.
-		self.read_packet_deadline_inner(deadline, |_| None).await
+		self.read_packet_deadline_inner(deadline, Stuffing::Stuffed, |_| None).await
 	}
 
 	/// Read a fast sync/bulk read status response, tolerating a missing motor reply.
@@ -179,8 +179,10 @@ where
 		deadline: Port::Instant,
 		mut block_data_len: impl FnMut(usize) -> Option<usize>,
 	) -> Result<Packet<'_>, ReadError<Port::Error>> {
-		self.read_packet_deadline_inner(deadline, |read_len| salvaged_message_len(read_len, &mut block_data_len))
-			.await
+		self.read_packet_deadline_inner(deadline, Stuffing::Verbatim, |read_len| {
+			salvaged_message_len(read_len, &mut block_data_len)
+		})
+		.await
 	}
 
 	/// Read a raw packet from the bus with the given deadline, deciding how to react to a read timeout.
@@ -191,6 +193,7 @@ where
 	async fn read_packet_deadline_inner(
 		&mut self,
 		deadline: Port::Instant,
+		stuffing: Stuffing,
 		mut salvage_on_timeout: impl FnMut(usize) -> Option<usize>,
 	) -> Result<Packet<'_>, ReadError<Port::Error>> {
 		// Check that the read buffer is large enough to hold atleast a instruction packet with 0 parameters.
@@ -249,8 +252,11 @@ where
 		// Mark the whole message as "used_bytes", so that the next call to `remove_garbage()` removes it.
 		self.used_bytes += stuffed_message_len;
 
-		// Remove byte-stuffing from the everything from instruction ID to the parameters.
-		let parameter_count = bytestuff::unstuff_inplace(&mut buffer[HEADER_SIZE..parameters_end]);
+		// Remove byte-stuffing from everything from the instruction ID to the parameters.
+		let parameter_count = match stuffing {
+			Stuffing::Stuffed => bytestuff::unstuff_inplace(&mut buffer[HEADER_SIZE..parameters_end]),
+			Stuffing::Verbatim => parameters_end - HEADER_SIZE,
+		};
 
 		// Wrap the data in a `Packet`.
 		let data = &self.read_buffer.as_ref()[..HEADER_SIZE + parameter_count];
@@ -291,6 +297,14 @@ where
 	}
 }
 
+/// Whether the body of a received packet is byte-stuffed.
+enum Stuffing {
+	Stuffed,
+
+	/// Not stuffed, as in fast sync/bulk read status packets.
+	Verbatim,
+}
+
 /// Length of the largest prefix of a fast-read response (within `read_len` received bytes) that ends on a
 /// complete motor block.
 ///
@@ -301,8 +315,7 @@ where
 /// `block_data_len(index)` returns the number of data bytes in the block of the `index`-th addressed motor,
 /// or [`None`] once past the last motor.
 ///
-/// The block boundaries are computed as if no byte-stuffing occurred. If stuffing did shift the layout, the
-/// trimmed length lands on the wrong byte and the subsequent CRC check fails, so no incorrect data is returned.
+/// The body is [`Stuffing::Verbatim`], so the block boundaries follow directly from the data lengths.
 fn salvaged_message_len(read_len: usize, block_data_len: impl FnMut(usize) -> Option<usize>) -> Option<usize> {
 	// Walk the addressed motors, accumulating the end offset of each block. Each block on the wire is
 	// error (1) + motor ID (1) + data (count) + CRC (2), and the first block's error byte follows the header
