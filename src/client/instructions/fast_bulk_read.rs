@@ -109,7 +109,7 @@ where
 	}
 }
 
-/// A fast bulk read operation that yields the unparsed bytes read from each motor.
+/// A fast bulk read operation that yields the response data from each motor.
 ///
 /// Returned by [`Client::fast_bulk_read_bytes`].
 /// The entire response is read from the bus before this iterator is returned;
