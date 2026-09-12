@@ -106,7 +106,7 @@ where
 		// Each motor block in the response is: error (1) + motor ID (1) + data (`count`) + CRC (2).
 		// A status packet can never carry more than a `u16` worth of parameters. Exceeding that needs a
 		// pathological number of motors and registers (see the `# Panics` note), so treat it as a caller bug.
-		let expected_parameters = reads.iter().fold(0u32, |acc, read| acc + u32::from(read.count) + 4);
+		let expected_parameters: u32 = reads.iter().map(|read| u32::from(read.count) + 4).sum();
 		let expected_parameters = u16::try_from(expected_parameters)
 			.expect("fast_bulk_read: the requested response is larger than a single status packet can hold");
 		let response = self
