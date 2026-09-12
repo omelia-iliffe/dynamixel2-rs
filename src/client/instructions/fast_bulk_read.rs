@@ -28,14 +28,8 @@ where
 	/// then yields a [`MissingResponse`] error naming the first motor that did not respond.
 	///
 	/// # Panics
-	/// This function panics if `reads` is empty.
-	///
-	/// The protocol forbids specifying the same motor ID multiple times.
-	/// This function panics if the same motor ID is used for more than one read.
-	///
-	/// A status packet can hold at most a `u16` worth of parameters.
-	/// This function also panics if the combined response would exceed that
-	/// (`sum(count + 4)` over all `reads`), which requires a pathological number of motors and registers.
+	/// Panics if `reads` is empty, if a motor ID is repeated (the protocol forbids it), or if the combined
+	/// response (`sum(count + 4)` over all `reads`) exceeds the `u16` of parameters a status packet can hold.
 	pub async fn fast_bulk_read_bytes<'a, T>(
 		&'a mut self,
 		reads: &'a [BulkReadData],
@@ -54,14 +48,8 @@ where
 	/// [`FastBulkRead::read_next_borrow`], which yields a [`Response`] of `&T` (for example `&[u8]`).
 	///
 	/// # Panics
-	/// This function panics if `reads` is empty.
-	///
-	/// The protocol forbids specifying the same motor ID multiple times.
-	/// This function panics if the same motor ID is used for more than one read.
-	///
-	/// A status packet can hold at most a `u16` worth of parameters.
-	/// This function also panics if the combined response would exceed that
-	/// (`sum(count + 4)` over all `reads`), which requires a pathological number of motors and registers.
+	/// Panics if `reads` is empty, if a motor ID is repeated (the protocol forbids it), or if the combined
+	/// response (`sum(count + 4)` over all `reads`) exceeds the `u16` of parameters a status packet can hold.
 	pub async fn fast_bulk_read_bytes_borrow<'a, T>(
 		&'a mut self,
 		reads: &'a [BulkReadData],
@@ -104,8 +92,6 @@ where
 		.await?;
 
 		// Each motor block in the response is: error (1) + motor ID (1) + data (`count`) + CRC (2).
-		// A status packet can never carry more than a `u16` worth of parameters. Exceeding that needs a
-		// pathological number of motors and registers (see the `# Panics` note), so treat it as a caller bug.
 		let expected_parameters: u32 = reads.iter().map(|read| u32::from(read.count) + 4).sum();
 		let expected_parameters = u16::try_from(expected_parameters)
 			.expect("fast_bulk_read: the requested response is larger than a single status packet can hold");

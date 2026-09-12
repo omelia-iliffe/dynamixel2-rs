@@ -162,18 +162,13 @@ where
 
 	/// Read a fast sync/bulk read status response, tolerating a missing motor reply.
 	///
-	/// Fast reads combine every motor's reply into a single status packet. When a motor does not reply, its
-	/// block is absent and the packet arrives shorter than its length field promises, so [`Self::read_packet_deadline`]
-	/// would wait for bytes that never come and time out, discarding the blocks that *did* arrive.
-	///
-	/// This variant salvages those blocks instead: on a read timeout it trims the response to the end of the last
-	/// complete motor block and validates that block's CRC. Because each block's CRC is computed over the whole
-	/// packet up to and including that block, a single check confirms every preceding block at once.
+	/// A missing motor response leaves the response packet shorter than its expected length. This method trims
+	/// to the last complete block and checks its CRC, which is computed over the whole packet up to that point.
 	///
 	/// `block_data_len(index)` returns the number of data bytes in the block of the `index`-th addressed motor,
 	/// or [`None`] once past the last motor. Each block on the wire is `error (1) + motor ID (1) + data (n) + CRC (2)`.
 	///
-	/// At least one complete block must be recovered; otherwise the timeout is propagated unchanged.
+	/// If no complete motor responses are received, a timeout is returned.
 	pub async fn read_fast_read_response_deadline(
 		&mut self,
 		deadline: Port::Instant,
@@ -317,9 +312,8 @@ enum Stuffing {
 ///
 /// The body is [`Stuffing::Verbatim`], so the block boundaries follow directly from the data lengths.
 fn salvaged_message_len(read_len: usize, block_data_len: impl FnMut(usize) -> Option<usize>) -> Option<usize> {
-	// Walk the addressed motors, accumulating the end offset of each block. Each block on the wire is
-	// error (1) + motor ID (1) + data (count) + CRC (2), and the first block's error byte follows the header
-	// and the STATUS instruction byte. Keep only the blocks that fit entirely, and return the last one's end.
+	// Each block on the wire is error (1) + motor ID (1) + data (count) + CRC (2); the first block's
+	// error byte follows the header and the STATUS instruction byte.
 	(0usize..)
 		.map_while(block_data_len)
 		.scan(HEADER_SIZE + 1, |offset, count| {

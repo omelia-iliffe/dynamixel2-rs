@@ -28,11 +28,8 @@ where
 	/// then yields a [`MissingResponse`] error naming the first motor that did not respond.
 	///
 	/// # Panics
-	/// This function panics if `motor_ids` is empty.
-	///
-	/// A status packet can hold at most a `u16` worth of parameters.
-	/// This function panics if the combined response would exceed that
-	/// (`(T::ENCODED_SIZE + 4) * motor_ids.len()`), which requires a pathological number of motors and registers.
+	/// Panics if `motor_ids` is empty, or if the combined response
+	/// (`(T::ENCODED_SIZE + 4) * motor_ids.len()`) exceeds the `u16` of parameters a status packet can hold.
 	pub async fn fast_sync_read<'a, T: Data>(
 		&'a mut self,
 		motor_ids: &'a [u8],
@@ -54,8 +51,6 @@ where
 		.await?;
 
 		// Each motor block in the response is: error (1) + motor ID (1) + data (`count`) + CRC (2).
-		// A status packet can never carry more than a `u16` worth of parameters. Exceeding that needs a
-		// pathological number of motors and registers (see the `# Panics` note), so treat it as a caller bug.
 		let expected_parameters = (u32::from(count) + 4) * motor_ids.len() as u32;
 		let expected_parameters = u16::try_from(expected_parameters)
 			.expect("fast_sync_read: the requested response is larger than a single status packet can hold");
@@ -83,11 +78,8 @@ where
 	/// in the same order as `motor_ids`.
 	///
 	/// # Panics
-	/// This function panics if `motor_ids` is empty.
-	///
-	/// A status packet can hold at most a `u16` worth of parameters.
-	/// This function panics if the combined response would exceed that
-	/// (`(count + 4) * motor_ids.len()`), which requires a pathological number of motors and registers.
+	/// Panics if `motor_ids` is empty, or if the combined response (`(count + 4) * motor_ids.len()`) exceeds
+	/// the `u16` of parameters a status packet can hold.
 	pub async fn fast_sync_read_bytes<'a, T>(
 		&'a mut self,
 		motor_ids: &'a [u8],
@@ -108,11 +100,8 @@ where
 	/// [`FastSyncReadBytes::read_next_borrow`], which yields a [`Response`] of `&T` (for example `&[u8]`).
 	///
 	/// # Panics
-	/// This function panics if `motor_ids` is empty.
-	///
-	/// A status packet can hold at most a `u16` worth of parameters.
-	/// This function panics if the combined response would exceed that
-	/// (`(count + 4) * motor_ids.len()`), which requires a pathological number of motors and registers.
+	/// Panics if `motor_ids` is empty, or if the combined response (`(count + 4) * motor_ids.len()`) exceeds
+	/// the `u16` of parameters a status packet can hold.
 	pub async fn fast_sync_read_bytes_borrow<'a, T>(
 		&'a mut self,
 		motor_ids: &'a [u8],
@@ -150,8 +139,6 @@ where
 		.await?;
 
 		// Each motor block in the response is: error (1) + motor ID (1) + data (`count`) + CRC (2).
-		// A status packet can never carry more than a `u16` worth of parameters. Exceeding that needs a
-		// pathological number of motors and registers (see the `# Panics` note), so treat it as a caller bug.
 		let expected_parameters = (u32::from(count) + 4) * motor_ids.len() as u32;
 		let expected_parameters = u16::try_from(expected_parameters)
 			.expect("fast_sync_read: the requested response is larger than a single status packet can hold");
